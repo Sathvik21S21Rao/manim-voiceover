@@ -116,9 +116,9 @@ class PocketTTSService(SpeechService):
         self.quantize = quantize
         initialize_speech_service(self, kwargs, transcription_model=transcription_model)
         self.model = TTSModel.load_model(language=language, quantize=quantize)
-        self._voice_states: dict[str, object] = {}
+        self._voice_states: dict[str, dict[str, object]] = {}
 
-    def _get_voice_state(self) -> object:
+    def _get_voice_state(self) -> dict[str, object]:
         voice = self.voice if self.voice is not None else _default_voice_for_language(self.language)
         if voice not in self._voice_states:
             self._voice_states[voice] = self.model.get_state_for_audio_prompt(voice)
@@ -132,8 +132,7 @@ class PocketTTSService(SpeechService):
         **kwargs: object,
     ) -> VoiceoverData:
         """"""
-        if cache_dir is None:
-            cache_dir = self.cache_dir
+        cache_dir = self.cache_dir if cache_dir is None else cache_dir
 
         input_text = remove_bookmarks(text)
         input_data = self._input_data(input_text)
@@ -147,7 +146,7 @@ class PocketTTSService(SpeechService):
         else:
             audio_path = path_to_string(path)
 
-        audio = self.model.generate_audio(self._get_voice_state(), input_text, **kwargs)
+        audio = self.model.generate_audio(self._get_voice_state(), input_text)
         _write_wave_file(Path(cache_dir) / audio_path, audio, self.model.sample_rate)
 
         json_dict: VoiceoverData = {
